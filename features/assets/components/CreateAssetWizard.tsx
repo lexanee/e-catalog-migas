@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Asset, AssetCategory, AssetStatus } from '../../../types';
 import { useAssets } from '../../../context/AssetContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useMasterData } from '../../../context/MasterDataContext';
 import { validateAssetReadiness } from '../../../utils/AssetCompliance';
 import { Check, ChevronRight, ChevronLeft, Upload, MapPin, Anchor, Truck, Ship, AlertCircle, Info, Save } from 'lucide-react';
 
@@ -29,6 +30,7 @@ const InputField = ({ label, field, type = 'text', placeholder, required = true,
 const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   const { addAsset } = useAssets();
   const { user } = useAuth();
+  const { configurations } = useMasterData();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -39,10 +41,6 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
     image: string;
     manufacturer: string;
     yearBuilt: number;
-    drillingDepth?: string;
-    horsePower?: string;
-    dwt?: string;
-    bollardPull?: string;
     lat: string;
     lng: string;
     status: AssetStatus;
@@ -50,19 +48,29 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   }>({
     name: '',
     category: 'Onshore Rig',
-    owner: user?.company || '', // Auto-fill company if vendor
+    owner: user?.company || '', 
     image: '',
     manufacturer: '',
     yearBuilt: new Date().getFullYear(),
-    drillingDepth: '',
-    horsePower: '',
-    dwt: '',
-    bollardPull: '',
     lat: '-6.2000',
     lng: '106.8166',
-    status: 'Registered', // Default for new creations
+    status: 'Registered', 
     locationName: ''
   });
+
+  const [dynamicSpecs, setDynamicSpecs] = useState<Record<string, any>>({});
+
+  // Group Dynamic Fields
+  const groupedParameters = useMemo(() => {
+     const params = configurations[formData.category] || [];
+     const groups: Record<string, typeof params> = {};
+     params.forEach(param => {
+        const groupName = param.group || 'Umum';
+        if (!groups[groupName]) groups[groupName] = [];
+        groups[groupName].push(param);
+     });
+     return groups;
+  }, [formData.category, configurations]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -78,13 +86,9 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
       if (!formData.owner) newErrors.owner = "Pemilik/Vendor harus diisi";
     }
 
+    // Step 2 is now mostly optional dynamic fields, but we ensure at least manufacturer
     if (currentStep === 2) {
       if (!formData.manufacturer) newErrors.manufacturer = "Pabrikan harus diisi";
-      if (formData.category.includes('Rig')) {
-         if (!formData.horsePower) newErrors.horsePower = "Horsepower wajib diisi";
-      } else {
-         if (!formData.bollardPull) newErrors.bollardPull = "Bollard Pull/DWT wajib diisi";
-      }
     }
 
     if (currentStep === 3) {
@@ -111,22 +115,21 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   const handleSubmit = () => {
     if (!validateStep(3)) return;
 
-    let capacityString = '';
-    if (formData.category.includes('Rig')) {
-        capacityString = `${formData.horsePower} HP / ${formData.drillingDepth || 'N/A'} ft`;
+    let capacityString = 'Pending Specs';
+    if (formData.category === 'Kapal') {
+        if (dynamicSpecs.bollardPull) capacityString = `${dynamicSpecs.bollardPull} Ton BP`;
+        else if (dynamicSpecs.dwt) capacityString = `${dynamicSpecs.dwt} DWT`;
     } else {
-        capacityString = `${formData.bollardPull} Ton BP / ${formData.dwt || 'N/A'} DWT`;
+        if (dynamicSpecs.ratedHP) capacityString = `${dynamicSpecs.ratedHP} HP`;
+        if (dynamicSpecs.drillingDepth) capacityString += ` / ${dynamicSpecs.drillingDepth} ft`;
     }
-
-    // Force 'Registered' status for everyone initially to ensure governance flow
-    const initialStatus: AssetStatus = 'Registered';
 
     const newAsset: Asset = {
       id: Date.now().toString(),
       number: `${new Date().getFullYear()}/${formData.category === 'Kapal' ? 'VS' : 'RG'}/${Math.floor(Math.random() * 10000)}`,
       name: formData.name,
       category: formData.category,
-      status: initialStatus,
+      status: 'Registered',
       location: formData.locationName,
       coordinates: { lat: parseFloat(formData.lat), lng: parseFloat(formData.lng) },
       history: [],
@@ -138,7 +141,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
       yearBuilt: formData.yearBuilt,
       manufacturer: formData.manufacturer,
       capacityString: capacityString,
-      specs: {},
+      specs: dynamicSpecs, // Save dynamic specs
       certification: 'BKI Class (Pending)', 
       co2Emissions: 0,
       totalEmissions: 0,
@@ -147,7 +150,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
       inventory: [],
       nextMaintenanceDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
       mtbf: 5000,
-      ownerType: user?.role === 'vendor' ? 'Foreign' : 'National', // Default logic, can be refined
+      ownerType: user?.role === 'vendor' ? 'Foreign' : 'National',
       ownerVendorId: user?.id
     };
 
@@ -161,7 +164,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="flex flex-col h-[500px]">
+    <div className="flex flex-col h-[600px]">
       <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
         <div className="flex items-center justify-between relative">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 dark:bg-slate-800 -z-0"></div>
@@ -194,7 +197,10 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
                      ].map((cat) => (
                         <button
                            key={cat.id}
-                           onClick={() => setFormData({...formData, category: cat.id as AssetCategory})}
+                           onClick={() => {
+                               setFormData({...formData, category: cat.id as AssetCategory});
+                               setDynamicSpecs({}); // Reset specs on category change
+                           }}
                            className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${formData.category === cat.id ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500'}`}
                         >
                            <cat.icon size={20} className="mb-1" />
@@ -213,24 +219,42 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
         )}
 
         {step === 2 && (
-          <div className="space-y-5 animate-fade-in">
+          <div className="space-y-6 animate-fade-in">
              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-xs mb-2">
                 <Info size={16} /><span>Konfigurasi spesifikasi untuk <strong>{formData.category}</strong></span>
              </div>
+             
+             {/* Static Basic Specs */}
              <div className="grid grid-cols-2 gap-4">
                 <InputField label="Pabrikan (Manufacturer)" field="manufacturer" value={formData.manufacturer} onChange={handleChange} error={errors.manufacturer} placeholder="e.g. Keppel FELS" />
                 <InputField label="Tahun Pembuatan" field="yearBuilt" type="number" value={formData.yearBuilt} onChange={handleChange} error={errors.yearBuilt} />
              </div>
-             {formData.category.includes('Rig') ? (
-                <div className="grid grid-cols-2 gap-4">
-                   <InputField label="Horsepower (HP)" field="horsePower" value={formData.horsePower} onChange={handleChange} error={errors.horsePower} placeholder="e.g. 2000" />
-                   <InputField label="Drilling Depth (ft)" field="drillingDepth" value={formData.drillingDepth} onChange={handleChange} error={errors.drillingDepth} placeholder="e.g. 30,000" required={false} />
-                </div>
+
+             {/* Dynamic Grouped Specs */}
+             {Object.keys(groupedParameters).length === 0 ? (
+                 <p className="text-xs text-slate-400 italic text-center py-4">Belum ada parameter teknis wajib yang dikonfigurasi.</p>
              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                   <InputField label="Bollard Pull (Ton)" field="bollardPull" value={formData.bollardPull} onChange={handleChange} error={errors.bollardPull} placeholder="e.g. 80" />
-                   <InputField label="Deadweight (DWT)" field="dwt" value={formData.dwt} onChange={handleChange} error={errors.dwt} placeholder="e.g. 4500" required={false} />
-                </div>
+                 Object.keys(groupedParameters).map(groupName => (
+                    <div key={groupName} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                       <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 pb-1 border-b border-slate-200 dark:border-slate-700">{groupName}</h4>
+                       <div className="grid grid-cols-2 gap-4">
+                          {groupedParameters[groupName].map(param => (
+                             <div key={param.id} className="space-y-1.5">
+                                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                                   {param.label} <span className="text-[10px] text-slate-400">({param.unit || '-'})</span>
+                                </label>
+                                <input 
+                                   type={param.type === 'number' ? 'number' : 'text'}
+                                   value={dynamicSpecs[param.field] || ''}
+                                   onChange={(e) => setDynamicSpecs({...dynamicSpecs, [param.field]: e.target.value})}
+                                   className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 transition-colors"
+                                   placeholder="..."
+                                />
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 ))
              )}
           </div>
         )}
@@ -245,13 +269,9 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
                 <InputField label="Latitude" field="lat" value={formData.lat} onChange={handleChange} error={errors.lat} placeholder="-6.2000" />
                 <InputField label="Longitude" field="lng" value={formData.lng} onChange={handleChange} error={errors.lng} placeholder="106.8166" />
              </div>
-             {/* 
-                Status field removed for Governance compliance. 
-                All new assets start as 'Registered' or 'Verification' pending workflow.
-             */}
              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg flex items-center gap-3">
                 <Info size={20} className="text-amber-600" />
-                <p className="text-xs text-amber-700 dark:text-amber-400">Aset akan didaftarkan dengan status <strong>Registered</strong> dan memerlukan verifikasi teknis sebelum Aktif.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Aset akan didaftarkan dengan status <strong>Konsep (Draft)</strong> dan memerlukan verifikasi.</p>
              </div>
           </div>
         )}

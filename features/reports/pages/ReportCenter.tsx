@@ -4,11 +4,11 @@ import { FileText, Download, Printer, Filter, Calendar } from 'lucide-react';
 
 const ReportCenter: React.FC = () => {
   const reports = [
-    { id: 'RPT-001', title: 'Laporan Rekapitulasi Tender', category: 'Procurement', date: 'Bulanan', desc: 'Ringkasan seluruh tender aktif, pemenang, dan nilai kontrak.' },
-    { id: 'RPT-002', title: 'Daftar Aset & Status Operasional', category: 'Technical', date: 'Real-time', desc: 'Status kesehatan aset, lokasi terkini, dan jadwal maintenance.' },
-    { id: 'RPT-003', title: 'Laporan Kepatuhan Vendor (TKDN/CSMS)', category: 'Compliance', date: 'Triwulan', desc: 'Daftar vendor dengan skor kepatuhan di bawah ambang batas.' },
-    { id: 'RPT-004', title: 'Analisis Pasar & Ketersediaan Aset', category: 'Market', date: 'Ad-hoc', desc: 'Hasil asesmen ketersediaan rig dan kapal untuk perencanaan tahunan.' },
-    { id: 'RPT-005', title: 'Logistik & Inventory Shorebase', category: 'Logistics', date: 'Harian', desc: 'Pergerakan stok material dan efisiensi pengiriman.' },
+    { id: 'RPT-001', title: 'Rekapitulasi Paket Tender & Kontrak', category: 'Procurement', date: 'Bulanan', desc: 'Ringkasan tender aktif, pemenang, dan nilai kontrak terintegrasi.' },
+    { id: 'RPT-002', title: 'Laporan Status Katalog Aset', category: 'Technical', date: 'Real-time', desc: 'Daftar aset berdasarkan status siklus hidup (Konsep, Verifikasi, Aktif).' },
+    { id: 'RPT-003', title: 'Laporan Realisasi TKDN & Kepatuhan Vendor', category: 'Compliance', date: 'Triwulan', desc: 'Analisis capaian TKDN Barang/Jasa dan skor CSMS mitra.' },
+    { id: 'RPT-004', title: 'Berita Acara Asesmen Ketersediaan (Market Enquiry)', category: 'Market', date: 'Ad-hoc', desc: 'Hasil survei pasar dan ketersediaan aset untuk perencanaan pengadaan.' },
+    { id: 'RPT-005', title: 'Pergerakan Material Logistik (Shorebase)', category: 'Logistics', date: 'Harian', desc: 'Laporan stok dan pengiriman material dari Pusat Logistik Berikat (PLB).' },
   ];
 
   return (

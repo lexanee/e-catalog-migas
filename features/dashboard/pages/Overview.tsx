@@ -21,6 +21,8 @@ const Overview: React.FC = () => {
   
   // KPI Logic
   const activeAssets = assets.filter(a => a.status === 'Active');
+  const verifyingAssets = assets.filter(a => a.status === 'Verification');
+  const catalogFillingAssets = assets.filter(a => a.status === 'Catalog_Filling');
   const activeTenders = tenders.filter(t => t.status === 'Published');
   
   const sustainabilityData = useMemo(() => {
@@ -58,7 +60,17 @@ const Overview: React.FC = () => {
     setReportContent('');
     setIsGenerating(true);
     try {
-      const prompt = `Executive Summary SKK Migas. Data: ${activeAssets.length} Active Assets, CO2 ${sustainabilityData.totalCO2.toFixed(0)} Tons, CSMS ${operationData.avgSafety.toFixed(1)}/100. Professional Indonesian.`;
+      const prompt = `Buat Ringkasan Eksekutif (Executive Summary) profesional untuk pimpinan SKK Migas dalam Bahasa Indonesia.
+      
+      Data Operasional Saat Ini:
+      - Aset Aktif (Tayang): ${activeAssets.length} unit
+      - Sedang Verifikasi Teknis: ${verifyingAssets.length} unit
+      - Sedang Pengisian Katalog: ${catalogFillingAssets.length} unit
+      - Total Tender Berjalan: ${activeTenders.length} paket
+      - Indikator Keselamatan (CSMS): ${operationData.avgSafety.toFixed(1)} / 100
+      - Emisi Karbon Terpantau: ${sustainabilityData.totalCO2.toFixed(0)} Ton
+      
+      Fokuskan narasi pada status digitalisasi katalog, kepatuhan teknis, dan efisiensi pengadaan. Gunakan nada formal korporat.`;
       
       if (process.env.API_KEY) {
          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -66,9 +78,9 @@ const Overview: React.FC = () => {
          setReportContent(response.text || "No report.");
       } else {
          await new Promise(r => setTimeout(r, 2000));
-         setReportContent(`**Ringkasan Eksekutif**\n\nOperasional hulu migas menunjukkan stabilitas dengan **${activeAssets.length} aset aktif** yang terintegrasi penuh. Indikator keselamatan (CSMS Score) berada di angka **${operationData.avgSafety.toFixed(1)}**, mencerminkan kepatuhan prosedur yang ketat.\n\nDari sisi efisiensi, digitalisasi tender telah mengamankan potensi penghematan biaya sebesar **${formatCurrency(financials.savings)}**. Target Net Zero didukung oleh pemantauan emisi real-time sebesar **${sustainabilityData.totalCO2.toFixed(0)} Ton**.`);
+         setReportContent(`**Ringkasan Eksekutif**\n\nOperasional hulu migas menunjukkan stabilitas dengan **${activeAssets.length} aset aktif** yang terintegrasi penuh dalam e-Catalog. Saat ini, sistem sedang memproses **${verifyingAssets.length} aset** dalam tahap Verifikasi Teknis untuk memastikan kepatuhan terhadap standar operasi.\n\nIndikator keselamatan (CSMS Score) berada di angka **${operationData.avgSafety.toFixed(1)}**, mencerminkan kepatuhan prosedur yang ketat. Dari sisi efisiensi, digitalisasi tender telah mengamankan potensi penghematan biaya sebesar **${formatCurrency(financials.savings)}**. Target Net Zero didukung oleh pemantauan emisi real-time sebesar **${sustainabilityData.totalCO2.toFixed(0)} Ton**.`);
       }
-    } catch (e) { setReportContent("Gagal."); } finally { setIsGenerating(false); }
+    } catch (e) { setReportContent("Gagal membuat laporan."); } finally { setIsGenerating(false); }
   };
 
   const chartColors = {

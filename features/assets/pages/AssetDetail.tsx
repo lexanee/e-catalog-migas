@@ -5,11 +5,12 @@ import { useAssets } from '../../../context/AssetContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { useProcurement } from '../../../context/ProcurementContext'; 
+import { useMasterData } from '../../../context/MasterDataContext'; // Use Master Data
 import AssetMap from '../components/AssetMap';
 import Modal from '../../../components/common/Modal';
 import { checkAndGenerateWorkOrder } from '../../../utils/WorkOrderAutomation';
 import { calculateCabotagePriority, validateAssetReadiness, getPriorityLabel } from '../../../utils/AssetCompliance';
-import { ArrowLeft, CheckCircle, Activity, Power, Cpu, ShieldCheck, MapPin, Users, AlertTriangle, Sparkles, BrainCircuit, AlertCircle, Edit, Save, Flag, Battery, MoreHorizontal, FileCheck, XCircle, Loader2, ShieldAlert, Phone, Mail, Building, ClipboardCheck, X, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Activity, Power, Cpu, ShieldCheck, MapPin, Users, AlertTriangle, Sparkles, BrainCircuit, AlertCircle, Edit, Save, Flag, Battery, MoreHorizontal, FileCheck, XCircle, Loader2, ShieldAlert, Phone, Mail, Building, ClipboardCheck, X, FileText, Anchor, ChevronRight, Check, SlidersHorizontal } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
 import { Asset, AssetStatus } from '../../../types';
@@ -22,6 +23,7 @@ const AssetDetail: React.FC = () => {
   const { vendors } = useProcurement(); 
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { configurations } = useMasterData(); // Fetch config
   
   const asset = assets.find((a) => a.id === id);
   const vendor = vendors.find(v => v.id === asset?.ownerVendorId);
@@ -39,6 +41,7 @@ const AssetDetail: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Asset>>({});
+  const [editSpecs, setEditSpecs] = useState<any>({});
 
   const [isAnalyzingHSE, setIsAnalyzingHSE] = useState(false);
   const [hseReport, setHseReport] = useState<string | null>(null);
@@ -60,7 +63,11 @@ const AssetDetail: React.FC = () => {
   }, [asset?.health, asset?.id]); 
 
   useEffect(() => {
-     if (asset) setEditFormData(asset);
+     if (asset) {
+        setEditFormData(asset);
+        // Merge root specs and dynamic specs object
+        setEditSpecs({ ...asset.specs, ...asset });
+     }
   }, [asset]);
 
   const canEdit = user && (['scm', 'technical'].includes(user.role) || (user.role === 'vendor' && asset?.ownerVendorId === user.id));
@@ -170,14 +177,35 @@ const AssetDetail: React.FC = () => {
   const handleEditSubmit = () => {
      if (!asset) return;
      try {
-        const mergedAsset = { ...asset, ...editFormData } as Asset;
-        validateAssetReadiness(mergedAsset);
-        updateAsset(asset.id, editFormData);
+        // Simple validation logic
+        const updates = { 
+            ...editFormData,
+            specs: { ...asset.specs, ...editSpecs } // Save dynamic specs
+        };
+        
+        // If Vendor edits a Registered asset, move it to Catalog_Filling automatically
+        if (user?.role === 'vendor' && asset.status === 'Registered') {
+            updates.status = 'Catalog_Filling';
+        }
+
+        updateAsset(asset.id, updates);
         setIsEditModalOpen(false);
-        addNotification(asset.id, "Aset Diperbarui", "Perubahan data berhasil disimpan dan divalidasi.", "info");
+        addNotification(asset.id, "Aset Diperbarui", "Perubahan data berhasil disimpan.", "info");
      } catch (e: any) {
         alert(`Validasi Gagal: ${e.message}`);
      }
+  };
+
+  // Vendor Action: Submit to Verification
+  const handleSubmitForVerification = () => {
+      if(!asset) return;
+      try {
+          validateAssetReadiness(asset);
+          updateAsset(asset.id, { status: 'Verification' });
+          addNotification(asset.id, "Pengajuan Verifikasi", "Aset telah dikirim ke Tim Teknis untuk verifikasi.", "info");
+      } catch (e: any) {
+          alert(`Belum Siap Verifikasi: ${e.message}`);
+      }
   };
 
   const handleAuditAction = (action: 'approve' | 'reject') => {
@@ -192,8 +220,9 @@ const AssetDetail: React.FC = () => {
         addNotification(asset.id, "Aset Disetujui", `Status aset ${asset.name} telah diubah menjadi AKTIF.`, "info");
         navigate('/governance');
      } else {
-        updateAsset(asset.id, { status: 'Registered' });
-        addNotification(asset.id, "Aset Dikembalikan", "Aset dikembalikan ke status Registered untuk revisi vendor.", "warning");
+        // Return to Catalog_Filling for revision, not Registered
+        updateAsset(asset.id, { status: 'Catalog_Filling' });
+        addNotification(asset.id, "Aset Dikembalikan", "Aset dikembalikan ke status Pengisian Katalog untuk revisi vendor.", "warning");
         navigate('/governance');
      }
   };
@@ -208,6 +237,27 @@ const AssetDetail: React.FC = () => {
   const tkdnValue = asset.ownerType === 'National' ? '75.5%' : asset.ownerType === 'Foreign' ? '15.0%' : '45.2%';
   const showVerificationPanel = isVerifier && asset.status === 'Verification';
 
+  // Lifecycle Steps for Visualization
+  const lifecycleSteps = [
+    { id: 'Registered', label: 'Registrasi' },
+    { id: 'Catalog_Filling', label: 'Pengisian Katalog' },
+    { id: 'Verification', label: 'Verifikasi Teknis' },
+    { id: 'Active', label: 'Aktif / Tayang' }
+  ];
+
+  const currentStepIndex = lifecycleSteps.findIndex(s => s.id === asset.status);
+
+  // Dynamic Specs for the asset category
+  const activeSpecs = configurations[asset.category] || [];
+  
+  // Group Specs by 'group' field
+  const groupedSpecs: Record<string, any[]> = {};
+  activeSpecs.forEach(spec => {
+     const groupName = spec.group || 'Umum';
+     if (!groupedSpecs[groupName]) groupedSpecs[groupName] = [];
+     groupedSpecs[groupName].push(spec);
+  });
+
   return (
     <div className="animate-fade-in pb-12">
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
@@ -215,10 +265,11 @@ const AssetDetail: React.FC = () => {
             <Link to={user?.role === 'technical' ? "/governance" : "/asset-catalog"} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 transition-colors">
                <ArrowLeft size={16} className="mr-1" /> Kembali ke {user?.role === 'technical' ? "Board Verifikasi" : "Daftar Aset"}
             </Link>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
                <div>
                   <div className="flex items-center gap-3 mb-1">
-                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : asset.status === 'Verification' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{asset.status}</span>
+                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : asset.status === 'Verification' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{asset.status.replace('_', ' ')}</span>
                      <span className="text-slate-400 text-xs font-mono">{asset.number}</span>
                   </div>
                   <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">{asset.name}</h1>
@@ -226,13 +277,38 @@ const AssetDetail: React.FC = () => {
                <div className="flex gap-3">
                   {canEdit && (
                      <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                        <Edit size={16} /> Edit Aset
+                        <Edit size={16} /> Edit Data
                      </button>
                   )}
                   <button onClick={runAiAnalysis} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
                      <Sparkles size={16} /> AI Analysis
                   </button>
                </div>
+            </div>
+
+            {/* Lifecycle Stepper - Gap Analysis Implementation */}
+            <div className="w-full max-w-3xl mb-2">
+                <div className="flex items-center justify-between relative">
+                    {/* Progress Bar Background */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full -z-0"></div>
+                    {/* Active Progress */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 rounded-full -z-0 transition-all duration-500" style={{ width: `${(currentStepIndex / (lifecycleSteps.length - 1)) * 100}%` }}></div>
+                    
+                    {lifecycleSteps.map((step, index) => {
+                        const isCompleted = index <= currentStepIndex;
+                        const isCurrent = index === currentStepIndex;
+                        return (
+                            <div key={step.id} className="relative z-10 flex flex-col items-center gap-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 ${isCompleted ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                                    {isCompleted ? <Check size={14} /> : index + 1}
+                                </div>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${isCurrent ? 'text-indigo-600 dark:text-white' : 'text-slate-400'}`}>
+                                    {step.label}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
          </div>
          
@@ -263,6 +339,31 @@ const AssetDetail: React.FC = () => {
                   <p className="text-xs">{complianceError}</p>
                </div>
             </div>
+         )}
+
+         {/* Vendor Action Banner - Gap Analysis Implementation */}
+         {user?.role === 'vendor' && asset.ownerVendorId === user.id && (asset.status === 'Registered' || asset.status === 'Catalog_Filling') && (
+             <div className="mb-6 p-5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center justify-between shadow-sm animate-slide-in">
+                 <div className="flex items-center gap-4">
+                     <div className="p-2 bg-indigo-600 text-white rounded-lg"><ClipboardCheck size={20} /></div>
+                     <div>
+                         <h3 className="font-bold text-indigo-900 dark:text-white">Status: {asset.status === 'Registered' ? 'Registrasi Awal' : 'Pengisian Katalog'}</h3>
+                         <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1">
+                             {asset.status === 'Registered' ? 'Silakan lengkapi data spesifikasi teknis untuk melanjutkan.' : 'Data telah dilengkapi. Ajukan verifikasi untuk validasi SKK Migas.'}
+                         </p>
+                     </div>
+                 </div>
+                 <div className="flex gap-3">
+                     {asset.status === 'Registered' && (
+                         <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 bg-white dark:bg-slate-900 border border-indigo-200 text-indigo-700 font-bold text-xs rounded-lg hover:bg-indigo-50 transition-colors">
+                             Lengkapi Katalog
+                         </button>
+                     )}
+                     <button onClick={handleSubmitForVerification} className="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2">
+                         Ajukan Verifikasi <ChevronRight size={14} />
+                     </button>
+                 </div>
+             </div>
          )}
 
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -305,7 +406,7 @@ const AssetDetail: React.FC = () => {
                      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                         <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-6">Informasi Umum & Spesifikasi</h3>
                         
-                        <div className="grid grid-cols-2 gap-y-6 gap-x-8 text-sm">
+                        <div className="grid grid-cols-2 gap-y-6 gap-x-8 text-sm mb-6">
                            <div>
                               <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nama Aset</label>
                               <p className="font-medium text-slate-900 dark:text-white">{asset.name}</p>
@@ -326,49 +427,36 @@ const AssetDetail: React.FC = () => {
                               <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Kapasitas Umum</label>
                               <p className="font-medium text-slate-900 dark:text-white">{asset.capacityString}</p>
                            </div>
-                           
-                           {/* DYNAMIC TECHNICAL SPECS DISPLAY */}
-                           {asset.specs.bollardPull && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Bollard Pull</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.bollardPull} Ton</p>
+                        </div>
+
+                        {/* DYNAMIC TECHNICAL SPECS DISPLAY - GROUPED */}
+                        <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                           {Object.keys(groupedSpecs).map(groupName => (
+                              <div key={groupName} className="mb-6 last:mb-0">
+                                 <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-3 flex items-center gap-2">
+                                    <SlidersHorizontal size={12} /> {groupName}
+                                 </h4>
+                                 <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    {groupedSpecs[groupName].map((param) => {
+                                       let val = (asset as any)[param.field];
+                                       if (val === undefined && asset.specs) {
+                                          val = (asset.specs as any)[param.field];
+                                       }
+                                       if (val !== undefined && val !== null && val !== '') {
+                                          return (
+                                             <div key={param.id}>
+                                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">{param.label}</label>
+                                                <p className="font-medium text-slate-900 dark:text-white">
+                                                   {val} {param.unit ? param.unit : ''}
+                                                </p>
+                                             </div>
+                                          );
+                                       }
+                                       return null;
+                                    })}
+                                 </div>
                               </div>
-                           )}
-                           {asset.specs.bhp && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Brake Horse Power</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.bhp} BHP</p>
-                              </div>
-                           )}
-                           {asset.specs.ratedHP && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Rig Power Rating</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.ratedHP} HP</p>
-                              </div>
-                           )}
-                           {asset.specs.drillingDepth && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Drilling Depth</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.drillingDepth} ft</p>
-                              </div>
-                           )}
-                           {asset.specs.waterDepth && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Water Depth Capacity</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.waterDepth} ft</p>
-                              </div>
-                           )}
-                           {asset.specs.deckArea && (
-                              <div>
-                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Deck Area</label>
-                                 <p className="font-medium text-slate-900 dark:text-white">{asset.specs.deckArea} m²</p>
-                              </div>
-                           )}
-                           
-                           <div>
-                              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">LOA / Breadth</label>
-                              <p className="font-medium text-slate-900 dark:text-white">{asset.specs.loa || '-'} m / {asset.specs.breadth || '-'} m</p>
-                           </div>
+                           ))}
                         </div>
                      </div>
 
@@ -549,26 +637,51 @@ const AssetDetail: React.FC = () => {
          </Modal>
 
          <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Detail Aset">
-            <div className="p-6 space-y-4">
-               <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Nama Aset</label>
-                  <input 
-                     value={editFormData.name || ''} 
-                     onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
-                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50"
-                  />
+            <div className="p-6 space-y-6">
+               <div className="space-y-4">
+                  <div>
+                     <label className="text-xs font-bold text-slate-500 uppercase">Nama Aset</label>
+                     <input 
+                        value={editFormData.name || ''} 
+                        onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900 outline-none focus:border-indigo-500"
+                     />
+                  </div>
+                  <div>
+                     <label className="text-xs font-bold text-slate-500 uppercase">Lokasi</label>
+                     <input 
+                        value={editFormData.location || ''} 
+                        onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-900 outline-none focus:border-indigo-500"
+                     />
+                  </div>
                </div>
-               <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Lokasi</label>
-                  <input 
-                     value={editFormData.location || ''} 
-                     onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
-                     className="w-full p-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50"
-                  />
+
+               {/* DYNAMIC MASTER DATA FIELDS FOR EDITING */}
+               <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-3">
+                     <SlidersHorizontal size={14} className="text-indigo-600" />
+                     <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase">Parameter Teknis ({asset.category})</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                     {activeSpecs.map(param => (
+                        <div key={param.id}>
+                           <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{param.label}</label>
+                           <input 
+                              type={param.type === 'number' ? 'number' : 'text'}
+                              value={editSpecs[param.field] || ''}
+                              onChange={(e) => setEditSpecs({...editSpecs, [param.field]: e.target.value})}
+                              className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 outline-none focus:border-indigo-500 transition-colors"
+                              placeholder={param.unit || ''}
+                           />
+                        </div>
+                     ))}
+                  </div>
                </div>
+
                <div className="flex justify-end gap-2 pt-4">
-                  <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm">Batal</button>
-                  <button onClick={handleEditSubmit} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2"><Save size={14} /> Simpan Perubahan</button>
+                  <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Batal</button>
+                  <button onClick={handleEditSubmit} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm hover:bg-indigo-700 transition-colors"><Save size={14} /> Simpan Perubahan</button>
                </div>
             </div>
          </Modal>

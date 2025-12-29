@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMarketAssessment } from '../../../hooks/useMarketAssessment';
 import { useProcurement } from '../../../context/ProcurementContext';
 import { useAssets } from '../../../context/AssetContext';
@@ -56,6 +56,17 @@ const MarketAssessment: React.FC = () => {
      setAvailableFields(configurations[selectedCategory] || []);
   }, [selectedCategory, configurations]);
 
+  // Group available fields for the dropdown
+  const fieldGroups = useMemo(() => {
+      const groups: Record<string, any[]> = {};
+      availableFields.forEach(field => {
+          const groupName = field.group || 'Umum';
+          if (!groups[groupName]) groups[groupName] = [];
+          groups[groupName].push(field);
+      });
+      return groups;
+  }, [availableFields]);
+
   const handleStartNew = () => {
      resetAssessment();
      setViewState('CREATE_STEP_1'); 
@@ -72,7 +83,7 @@ const MarketAssessment: React.FC = () => {
      setSelectedSubType(sub);
      updateFilters({ category: selectedCategory, subType: sub });
      
-     // Initialize default params from Master Data
+     // Initialize default params from Master Data (First 2 as default)
      const defaultParams = configurations[selectedCategory].slice(0, 2).map((p, idx) => ({
         id: `def-${idx}`,
         label: p.label,
@@ -319,7 +330,7 @@ const MarketAssessment: React.FC = () => {
                      </div>
                      
                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Tambah Parameter Teknis (Dari Master Data)</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">Tambah Parameter Teknis</label>
                         <div className="flex gap-2">
                            <select 
                               className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
@@ -332,9 +343,13 @@ const MarketAssessment: React.FC = () => {
                                  }
                               }}
                            >
-                              <option value="">-- Pilih Spesifikasi --</option>
-                              {availableFields.map(f => (
-                                 <option key={f.field} value={f.field} disabled={parameters.some(p => p.field === f.field)}>{f.label}</option>
+                              <option value="">-- Pilih Spesifikasi (By Group) --</option>
+                              {Object.keys(fieldGroups).map(groupName => (
+                                <optgroup key={groupName} label={groupName}>
+                                    {fieldGroups[groupName].map(f => (
+                                        <option key={f.field} value={f.field} disabled={parameters.some(p => p.field === f.field)}>{f.label}</option>
+                                    ))}
+                                </optgroup>
                               ))}
                            </select>
                         </div>

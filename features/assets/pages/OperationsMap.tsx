@@ -77,11 +77,11 @@ const OperationsMap: React.FC = () => {
             </div>
 
             <div className="space-y-1 mb-6">
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Tipe Aset</p>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Kategori Aset</p>
                {[
-                  { id: 'Onshore Rig', label: 'Land Rig', icon: Truck },
-                  { id: 'Offshore Rig', label: 'Offshore', icon: Anchor },
-                  { id: 'Kapal', label: 'Vessel', icon: Navigation }
+                  { id: 'Onshore Rig', label: 'Onshore Rig (Darat)', icon: Truck },
+                  { id: 'Offshore Rig', label: 'Offshore Rig (Lepas Pantai)', icon: Anchor },
+                  { id: 'Kapal', label: 'Kapal (Vessel)', icon: Navigation }
                ].map(cat => (
                   <button key={cat.id} onClick={() => toggleCategory(cat.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl text-sm font-medium transition-all ${visibleCategories.includes(cat.id) ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                      <div className="flex items-center gap-2.5"><cat.icon size={16} className={visibleCategories.includes(cat.id) ? "text-indigo-600" : "text-slate-400"} /> <span>{cat.label}</span></div>

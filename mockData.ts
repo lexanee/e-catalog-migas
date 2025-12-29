@@ -225,6 +225,96 @@ export const assets: Asset[] = [
       }
     ],
     maintenanceLog: []
+  },
+  // NEW ASSETS FOR WORKFLOW DEMO
+  {
+    id: '4',
+    number: 'VS-PENDING-001',
+    name: 'Bintang Laut 01',
+    category: 'Kapal',
+    subType: 'Crewboat',
+    location: 'Batam (Dockyard)',
+    coordinates: { lat: 1.1000, lng: 104.0000 },
+    history: [],
+    dailyRate: 0,
+    status: 'Registered',
+    health: 100,
+    csmsScore: 0,
+    incidentCount: 0,
+    daysSinceIncident: 0,
+    yearBuilt: 2023,
+    manufacturer: 'Batam Shipyard',
+    flagCountry: 'Indonesia',
+    ownerType: 'National',
+    ownerVendorId: 'v-002', // Global Offshore
+    certification: 'Pending BKI',
+    capacityString: 'Pending Specs',
+    specs: {},
+    co2Emissions: 0,
+    totalEmissions: 0,
+    nextMaintenanceDate: '',
+    mtbf: 0
+  },
+  {
+    id: '5',
+    number: 'RG-VERIFY-002',
+    name: 'Rig Semeru 05',
+    category: 'Onshore Rig',
+    subType: 'Workover',
+    location: 'Cepu Block',
+    coordinates: { lat: -7.1500, lng: 111.6000 },
+    history: [],
+    dailyRate: 150000000,
+    status: 'Verification',
+    health: 100,
+    csmsScore: 85,
+    incidentCount: 0,
+    daysSinceIncident: 0,
+    yearBuilt: 2020,
+    manufacturer: 'RG Petro-Machinery',
+    flagCountry: 'Indonesia',
+    ownerType: 'National',
+    ownerVendorId: 'v-001', // Samudra Merah Putih
+    certification: 'Migas SKPP (Submitted)',
+    capacityString: '750 HP / 10000 ft',
+    specs: {
+        ratedHP: 750,
+        drillingDepth: 10000
+    },
+    co2Emissions: 0,
+    totalEmissions: 0,
+    nextMaintenanceDate: '',
+    mtbf: 0
+  },
+  {
+    id: '6',
+    number: 'VS-CAT-003',
+    name: 'Ocean Tug 99',
+    category: 'Kapal',
+    subType: 'Tugboat',
+    location: 'Surabaya',
+    coordinates: { lat: -7.2000, lng: 112.7500 },
+    history: [],
+    dailyRate: 0,
+    status: 'Catalog_Filling',
+    health: 100,
+    csmsScore: 0,
+    incidentCount: 0,
+    daysSinceIncident: 0,
+    yearBuilt: 2019,
+    manufacturer: 'PAL Indonesia',
+    flagCountry: 'Indonesia',
+    ownerType: 'National',
+    ownerVendorId: 'v-002', 
+    certification: 'BKI',
+    capacityString: '40 Ton BP',
+    specs: {
+        bollardPull: 40
+    },
+    co2Emissions: 0,
+    totalEmissions: 0,
+    nextMaintenanceDate: '',
+    mtbf: 0
   }
 ];
 

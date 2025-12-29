@@ -50,7 +50,6 @@ const AssetRegistry: React.FC = () => {
   };
 
   const handleArchive = (id: string, currentStatus: AssetStatus) => {
-     // Logic for Vendor to Archive/Restore asset (Manual Page 28, 30)
      const newStatus: AssetStatus = currentStatus === 'Inactive' ? 'Active' : 'Inactive';
      updateAsset(id, { status: newStatus });
   };
@@ -74,6 +73,31 @@ const AssetRegistry: React.FC = () => {
 
   const manufacturers = useMemo(() => ['All', ...Array.from(new Set(assets.filter(a => a.category === activeTab).map(a => a.manufacturer || ''))).filter(Boolean)], [assets, activeTab]);
 
+  // Updated Terminology based on SKK Migas Reference
+  const getStatusLabel = (status: AssetStatus) => {
+      switch(status) {
+          case 'Registered': return 'Konsep (Draft)';
+          case 'Catalog_Filling': return 'Pengisian Katalog';
+          case 'Verification': return 'Verifikasi Teknis';
+          case 'Active': return 'Aktif / Tayang';
+          case 'Inactive': return 'Non-Aktif (Arsip)';
+          case 'Maintenance': return 'Maintenance';
+          default: return status;
+      }
+  };
+
+  const getStatusStyle = (status: AssetStatus) => {
+      switch(status) {
+          case 'Active': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+          case 'Inactive': return 'bg-rose-50 text-rose-700 border-rose-200';
+          case 'Maintenance': return 'bg-amber-50 text-amber-700 border-amber-200';
+          case 'Registered': return 'bg-slate-100 text-slate-600 border-slate-200'; // Neutral for Draft
+          case 'Catalog_Filling': return 'bg-sky-50 text-sky-700 border-sky-200'; // Info for Filling
+          case 'Verification': return 'bg-indigo-50 text-indigo-700 border-indigo-200'; // Action needed
+          default: return 'bg-slate-50 text-slate-600 border-slate-200';
+      }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in pb-28">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -82,7 +106,7 @@ const AssetRegistry: React.FC = () => {
              {user?.role === 'vendor' ? 'Katalog Aset Saya' : 'Master Data Aset'}
           </h1>
           <p className="text-slate-500 text-sm">
-             {user?.role === 'vendor' ? 'Kelola armada dan peralatan yang terdaftar.' : 'Katalog aset terpusat dan spesifikasi teknis.'}
+             {user?.role === 'vendor' ? 'Kelola armada dan lengkapi data teknis katalog.' : 'Katalog aset terpusat SKK Migas.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -131,7 +155,15 @@ const AssetRegistry: React.FC = () => {
            <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-4 animate-slide-in">
               <div>
                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Status</label>
-                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="w-full p-2 text-sm border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 outline-none"><option value="All">Semua Status</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="w-full p-2 text-sm border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 outline-none">
+                    <option value="All">Semua Status</option>
+                    <option value="Active">Aktif / Tayang</option>
+                    <option value="Inactive">Non-Aktif (Arsip)</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Registered">Konsep (Draft)</option>
+                    <option value="Catalog_Filling">Pengisian Katalog</option>
+                    <option value="Verification">Verifikasi Teknis</option>
+                 </select>
               </div>
               <div>
                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Pabrikan</label>
@@ -174,8 +206,8 @@ const AssetRegistry: React.FC = () => {
                                </td>
                                <td className="px-6 py-3 text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" /> {asset.location}</td>
                                <td className="px-6 py-3">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : asset.status === 'Inactive' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                     {asset.status}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${getStatusStyle(asset.status)}`}>
+                                     {getStatusLabel(asset.status)}
                                   </span>
                                </td>
                                <td className="px-6 py-3 text-right flex justify-end gap-2">
@@ -183,7 +215,7 @@ const AssetRegistry: React.FC = () => {
                                      <button 
                                        onClick={() => handleArchive(asset.id, asset.status)} 
                                        className="p-1 text-slate-400 hover:text-indigo-600"
-                                       title={asset.status === 'Inactive' ? 'Aktifkan Kembali' : 'Non-Aktifkan (Arsipkan)'}
+                                       title={asset.status === 'Inactive' ? 'Aktifkan Kembali' : 'Non-Aktifkan (Arsip)'}
                                      >
                                         {asset.status === 'Inactive' ? <RefreshCw size={16} /> : <Archive size={16} />}
                                      </button>
@@ -208,7 +240,7 @@ const AssetRegistry: React.FC = () => {
                          <p className="text-xs text-slate-500 mb-4">{asset.location}</p>
                          <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex justify-between items-center">
                             <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{asset.capacityString}</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{asset.status}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getStatusStyle(asset.status)}`}>{getStatusLabel(asset.status)}</span>
                          </div>
                       </div>
                     );

@@ -17,13 +17,20 @@ export interface TechnicalSpecs {
   maxSpeed?: number; // knots
   deckArea?: number; // m2
   
-  // Rig Specific
+  // Rig Specific - Basic
   ratedHP?: number; // Horse Power rating
   drillingDepth?: number; // ft
   waterDepth?: number; // ft
   cantileverSkid?: number; // ft
   quartersCapacity?: number; // pax
   variableDeckLoad?: number; // kips
+  
+  // Rig Specific - Advanced (Gap Analysis Fix)
+  drawworksHP?: number;
+  mudPumpCount?: number;
+  mudPumpHP?: number;
+  bopPressureRating?: number; // psi
+  topDriveTorque?: number; // ft-lbs
   
   // Common Dimensions
   loa?: number; // Length Overall (m)

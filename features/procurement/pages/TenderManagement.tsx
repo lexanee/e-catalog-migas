@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tender } from '../../../types';
 
 const TenderManagement: React.FC = () => {
+  const { assets } = useAssets(); // Access assets to get specs
   const { tenders, requests, addTender, awardTender } = useProcurement();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'All' | 'Draft' | 'Published' | 'Closed'>('All');
@@ -26,7 +27,7 @@ const TenderManagement: React.FC = () => {
   const [bidOpeningDate, setBidOpeningDate] = useState('');
 
   const [forceUnseal, setForceUnseal] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<'list' | 'matrix'>('list'); // 2. Missing Feature: Comparison View Mode
+  const [viewMode, setViewMode] = useState<'list' | 'matrix'>('list');
 
   const availableRequests = requests.filter(r => r.status === 'Approved' && !r.tenderId);
   
@@ -56,10 +57,28 @@ const TenderManagement: React.FC = () => {
   const generateSOW = async () => {
      if (selectedRequestIds.length === 0) return;
      setIsGenerating(true);
-     const selectedAssets = requests.filter(r => selectedRequestIds.includes(r.id)).map(r => `${r.assetName} (${r.category})`);
      
+     // 1. Enrich prompt with actual technical specs
+     const selectedAssetsSpecs = selectedRequestIds.map(reqId => {
+        const req = requests.find(r => r.id === reqId);
+        if (!req) return '';
+        const asset = assets.find(a => a.name === req.assetName); // Match by name usually, or use ID if available
+        const specs = asset ? asset.capacityString : 'Spesifikasi Standar';
+        return `${req.assetName} (${req.category} - ${specs})`;
+     }).filter(Boolean);
+
      try {
-        const prompt = `Buat deskripsi Lingkup Kerja (Scope of Work) profesional untuk paket tender migas yang mencakup: ${selectedAssets.join(', ')}. Sertakan persyaratan teknis dan kepatuhan K3LL (CSMS). Gunakan Bahasa Indonesia formal sesuai standar PTK-007. Maksimal 100 kata.`;
+        const prompt = `Buat deskripsi Lingkup Kerja (Scope of Work) profesional untuk paket tender hulu migas.
+        
+        Aset yang dibutuhkan:
+        ${selectedAssetsSpecs.map(s => `- ${s}`).join('\n')}
+        
+        Persyaratan Wajib:
+        1. Kepatuhan penuh terhadap PTK-007 Rev.05.
+        2. Sertifikasi BKI / IACS yang valid.
+        3. Standar CSMS SKK Migas (High Risk).
+        
+        Output: Paragraf formal Bahasa Indonesia (maksimal 150 kata) yang mencakup tujuan pengadaan, spesifikasi teknis utama, dan persyaratan kepatuhan.`;
         
         if (process.env.API_KEY) {
            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -67,16 +86,16 @@ const TenderManagement: React.FC = () => {
            setTenderDesc(response.text || "");
         } else {
            await new Promise(r => setTimeout(r, 1500));
-           setTenderDesc(`Penyediaan ${selectedAssets.length} unit aset termasuk ${selectedAssets[0]}. Kontraktor wajib menyediakan unit yang beroperasi penuh dengan kru bersertifikat, memenuhi standar keselamatan SKK Migas PTK-007 Rev.05, dan memiliki sertifikasi BKI yang valid.`);
+           setTenderDesc(`Lingkup kerja mencakup penyediaan, pengoperasian, dan pemeliharaan ${selectedAssetsSpecs.length} unit aset penunjang operasi hulu migas, antara lain: ${selectedAssetsSpecs.join(', ')}. Kontraktor wajib memastikan seluruh unit memiliki sertifikasi kelas (BKI/IACS) yang aktif, memenuhi standar keselamatan migas (CSMS), serta mematuhi ketentuan TKDN sesuai PTK-007 Rev.05. Unit harus siap dimobilisasi sesuai jadwal operasi yang ditetapkan.`);
         }
-        setTenderTitle(`Pengadaan ${selectedAssets.length} Unit Aset Penunjang Hulu Migas - ${new Date().getFullYear()}`);
+        setTenderTitle(`Pengadaan Jasa Sewa ${selectedAssetsSpecs.length} Unit Aset Hulu Migas - ${new Date().getFullYear()}`);
         
         const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
+        nextWeek.setDate(nextWeek.getDate() + 14); // 2 weeks standard
         setBidOpeningDate(nextWeek.toISOString().split('T')[0]);
 
      } catch (e) {
-        setTenderDesc("Gagal menghasilkan deskripsi.");
+        setTenderDesc("Gagal menghasilkan deskripsi otomatis.");
      } finally {
         setIsGenerating(false);
      }
@@ -105,7 +124,7 @@ const TenderManagement: React.FC = () => {
 
   const evaluateBids = async () => {
      if (!selectedTender) return;
-     if (isTenderSealed(selectedTender)) return;
+     if (isTenderSealed(selectedTender)) return; // Guard clause
 
      setIsAiModalOpen(true);
      setIsGenerating(true);
@@ -113,13 +132,22 @@ const TenderManagement: React.FC = () => {
      try {
         if (process.env.API_KEY) {
            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-           const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: "Evaluate bids for tender (Indonesian)..." });
+           const prompt = `Evaluasi penawaran tender berikut berdasarkan PTK-007:
+           Judul: ${selectedTender.name}
+           HPS: IDR ${selectedTender.totalValue}
+           Penawaran:
+           ${selectedTender.bids?.map(b => `- ${b.vendorName}: IDR ${b.bidAmount} (Teknis: ${b.complianceScore})`).join('\n')}
+           
+           Berikan rekomendasi pemenang berdasarkan harga terendah yang memenuhi syarat teknis (LCEC).`;
+           
+           const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
            setAiContent(response.text || "No evaluation.");
         } else {
            await new Promise(r => setTimeout(r, 1500));
-           setAiContent(`**Hasil Evaluasi Penawaran:**\n\nRekomendasi Pemenang: **${selectedTender.bids?.[0]?.vendorName || 'Tidak Ada'}**.\n\nDasar Pertimbangan:\n1. Harga penawaran terendah yang memenuhi syarat teknis.\n2. Skor Kepatuhan (CSMS) di atas ambang batas (85).\n3. Ketersediaan unit sesuai jadwal operasional.`);
+           const bestBid = selectedTender.bids?.sort((a,b) => b.complianceScore! - a.complianceScore!)[0]; // Simple mock logic
+           setAiContent(`**Laporan Evaluasi Tender**\n\nMetode Evaluasi: Kualitas & Biaya.\n\nRekomendasi Pemenang: **${bestBid?.vendorName || 'N/A'}**\n\n**Analisis:**\n1. Vendor memiliki skor teknis tertinggi (${bestBid?.complianceScore}).\n2. Harga penawaran berada dalam batas kewajaran HPS.\n3. Status administrasi CIVD valid.`);
         }
-     } catch (e) { setAiContent("Error."); } finally { setIsGenerating(false); }
+     } catch (e) { setAiContent("Error evaluasi."); } finally { setIsGenerating(false); }
   };
 
   return (
@@ -238,7 +266,6 @@ const TenderManagement: React.FC = () => {
                       )}
                    </div>
                    
-                   {/* 2. MISSING FEATURE: Matrix View for Bid Comparison */}
                    {selectedTender.bids && selectedTender.bids.length > 0 ? (
                       viewMode === 'list' ? (
                          <div className="space-y-3">
@@ -259,7 +286,7 @@ const TenderManagement: React.FC = () => {
                                      </div>
                                      <div className="flex items-center gap-4">
                                         <p className={`font-mono font-bold text-sm ${sealed ? 'text-slate-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                                           {sealBid(bid.bidAmount, sealed)}
+                                           {sealed ? '**************' : sealBid(bid.bidAmount, false)}
                                         </p>
                                         {selectedTender.status === 'Published' && !sealed && (
                                            <button onClick={() => { awardTender(selectedTender.id, bid.vendorName, bid.bidAmount, requests); setSelectedTenderId(null); }} className="p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors tooltip" title="Tunjuk Pemenang">
@@ -286,7 +313,7 @@ const TenderManagement: React.FC = () => {
                                   <tr>
                                      <td className="p-3 border dark:border-slate-700 font-bold text-slate-600">Harga Penawaran</td>
                                      {selectedTender.bids.map((bid, i) => (
-                                        <td key={i} className="p-3 border dark:border-slate-700 font-mono text-slate-900 dark:text-white">{sealBid(bid.bidAmount, false)}</td>
+                                        <td key={i} className="p-3 border dark:border-slate-700 font-mono text-slate-900 dark:text-white">{isTenderSealed(selectedTender) ? '**************' : sealBid(bid.bidAmount, false)}</td>
                                      ))}
                                   </tr>
                                   <tr>
@@ -307,7 +334,7 @@ const TenderManagement: React.FC = () => {
                                      <td className="p-3 border dark:border-slate-700"></td>
                                      {selectedTender.bids.map((bid, i) => (
                                         <td key={i} className="p-3 border dark:border-slate-700">
-                                           <button onClick={() => { awardTender(selectedTender.id, bid.vendorName, bid.bidAmount, requests); setSelectedTenderId(null); }} className="w-full py-2 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700">Pilih Pemenang</button>
+                                           <button disabled={isTenderSealed(selectedTender)} onClick={() => { awardTender(selectedTender.id, bid.vendorName, bid.bidAmount, requests); setSelectedTenderId(null); }} className="w-full py-2 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Pilih Pemenang</button>
                                         </td>
                                      ))}
                                   </tr>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { AssetCategory } from '../../../types';
 import { useMasterData, TechnicalParameter } from '../../../context/MasterDataContext';
-import { Save, Plus, Trash2, Settings, Ship, Anchor, Truck, Check, AlertCircle } from 'lucide-react';
+import { Save, Plus, Trash2, Settings, Ship, Anchor, Truck, Check, AlertCircle, Layers } from 'lucide-react';
 
 const TechnicalParameters: React.FC = () => {
   const { configurations, updateConfiguration, availableLibrary } = useMasterData();
@@ -39,6 +39,9 @@ const TechnicalParameters: React.FC = () => {
   const availableToAdd = availableLibrary.filter(
     p => !activeParams.some(active => active.id === p.id)
   );
+
+  // Sorting params by group for better visibility
+  const sortedParams = [...activeParams].sort((a,b) => (a.group || 'Umum').localeCompare(b.group || 'Umum'));
 
   return (
     <div className="p-6 max-w-6xl mx-auto animate-fade-in pb-24">
@@ -114,7 +117,7 @@ const TechnicalParameters: React.FC = () => {
                 >
                   <option value="">-- Pilih dari Pustaka Parameter --</option>
                   {availableToAdd.map(p => (
-                    <option key={p.id} value={p.id}>{p.label} ({p.unit || 'No Unit'})</option>
+                    <option key={p.id} value={p.id}>{p.label} ({p.unit || 'No Unit'}) - {p.group}</option>
                   ))}
                 </select>
                 <div className="w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -127,7 +130,6 @@ const TechnicalParameters: React.FC = () => {
             <div className="flex-1 p-6 bg-slate-50 dark:bg-slate-950">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-xs font-bold text-slate-500 uppercase">Parameter Aktif ({activeParams.length})</h4>
-                <span className="text-[10px] text-slate-400 italic">Drag & drop features coming soon</span>
               </div>
               
               {activeParams.length === 0 ? (
@@ -137,13 +139,16 @@ const TechnicalParameters: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {activeParams.map((param, index) => (
+                  {sortedParams.map((param, index) => (
                     <div key={param.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm group hover:border-indigo-300 transition-colors">
                       <div className="flex items-center gap-4">
                         <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500">{index + 1}</span>
                         <div>
-                          <p className="font-bold text-sm text-slate-800 dark:text-white">{param.label}</p>
-                          <div className="flex gap-2 text-xs text-slate-500 mt-0.5">
+                          <div className="flex items-center gap-2 mb-0.5">
+                             <p className="font-bold text-sm text-slate-800 dark:text-white">{param.label}</p>
+                             {param.group && <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-500 flex items-center gap-1"><Layers size={10} /> {param.group}</span>}
+                          </div>
+                          <div className="flex gap-2 text-xs text-slate-500">
                             <span className="font-mono bg-slate-50 px-1.5 rounded border border-slate-100 dark:border-slate-700">{param.field}</span>
                             <span>•</span>
                             <span>{param.type === 'number' ? 'Numerik' : 'Teks'}</span>

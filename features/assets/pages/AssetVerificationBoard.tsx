@@ -3,7 +3,7 @@ import React from 'react';
 import { useAssets } from '../../../context/AssetContext';
 import { Asset, AssetStatus } from '../../../types';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Clock, Shield, AlertCircle, CheckCircle, Ship, Anchor, Truck } from 'lucide-react';
+import { MoreHorizontal, Clock, Shield, AlertCircle, CheckCircle, Ship, Anchor, Truck, FileText, Send, Edit3 } from 'lucide-react';
 
 const KanbanColumn = ({ title, status, assets, color, icon: Icon }: any) => {
   const navigate = useNavigate();
@@ -40,7 +40,11 @@ const KanbanColumn = ({ title, status, assets, color, icon: Icon }: any) => {
                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-1 text-[10px] text-slate-400">
                      <Clock size={10} />
-                     <span>Updated today</span>
+                     <span>
+                        {status === 'Registered' ? 'Konsep (Draft)' : 
+                         status === 'Catalog_Filling' ? 'Pengisian Katalog' : 
+                         status === 'Verification' ? 'Verifikasi Teknis' : 'Aktif'}
+                     </span>
                   </div>
                   {status === 'Verification' && (
                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Butuh Audit</span>
@@ -67,29 +71,36 @@ const AssetVerificationBoard: React.FC = () => {
 
       <div className="flex-1 overflow-x-auto">
          <div className="flex gap-4 h-full min-w-[1000px]">
+            {/* 
+                Flow Reference:
+                1. Pengajuan Baru (Registered/Draft)
+                2. Pengisian Katalog (Catalog_Filling)
+                3. Verifikasi Teknis (Verification)
+                4. Aktif / Tayang (Active)
+            */}
             <KanbanColumn 
-               title="Registrasi Baru" 
+               title="Pengajuan Baru" 
                status="Registered" 
                assets={getAssetsByStatus('Registered')} 
                color="bg-slate-500" 
-               icon={Clock} 
+               icon={Send} 
             />
             <KanbanColumn 
                title="Pengisian Katalog" 
                status="Catalog_Filling" 
                assets={getAssetsByStatus('Catalog_Filling')} 
                color="bg-sky-500" 
-               icon={MoreHorizontal} 
+               icon={Edit3} 
             />
             <KanbanColumn 
                title="Verifikasi Teknis" 
                status="Verification" 
                assets={getAssetsByStatus('Verification')} 
                color="bg-amber-500" 
-               icon={AlertCircle} 
+               icon={Shield} 
             />
             <KanbanColumn 
-               title="Aktif / Operational" 
+               title="Aktif / Tayang" 
                status="Active" 
                assets={getAssetsByStatus('Active')} 
                color="bg-emerald-500" 
