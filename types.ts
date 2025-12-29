@@ -7,12 +7,39 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface TechnicalSpecs {
+  // Vessel Specific
+  bollardPull?: number; // tons
+  dwt?: number; // deadweight tonnage
+  grossTonnage?: number;
+  mainEngine?: string;
+  bhp?: number; // Brake Horse Power
+  maxSpeed?: number; // knots
+  deckArea?: number; // m2
+  
+  // Rig Specific
+  ratedHP?: number; // Horse Power rating
+  drillingDepth?: number; // ft
+  waterDepth?: number; // ft
+  cantileverSkid?: number; // ft
+  quartersCapacity?: number; // pax
+  variableDeckLoad?: number; // kips
+  
+  // Common Dimensions
+  loa?: number; // Length Overall (m)
+  breadth?: number; // m
+  depth?: number; // m
+  draft?: number; // m
+}
+
 export interface MaintenanceRecord {
   id: string;
   title: string;
   date: string;
   type: 'Inspection' | 'Repair' | 'Maintenance';
   description: string;
+  status: 'Open' | 'In Progress' | 'Completed'; 
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
 }
 
 export interface SparePart {
@@ -32,6 +59,7 @@ export interface Asset {
   number: string;
   name: string;
   category: AssetCategory;
+  subType?: string;
   location: string;
   coordinates: Coordinates;
   history: Coordinates[];
@@ -42,11 +70,15 @@ export interface Asset {
   crewCount?: number;
   certification: string;
   yearBuilt: number;
-  capacity: string;
   manufacturer: string;
   flagCountry?: string;
   ownerType?: 'National' | 'Foreign';
   ownerVendorId?: string;
+  
+  // Enhanced Specs
+  specs: TechnicalSpecs;
+  capacityString?: string; // Display purposes only (e.g. "2000 HP")
+
   co2Emissions: number;
   totalEmissions: number;
   sustainabilityScore?: number;
@@ -55,11 +87,11 @@ export interface Asset {
   daysSinceIncident: number;
   nextMaintenanceDate: string;
   mtbf: number;
-  variableDeckLoad?: number;
   maintenanceLog?: MaintenanceRecord[];
   inventory?: SparePart[];
   currentZoneId?: string;
   bkiData?: any;
+  imoNumber?: string;
 }
 
 export interface Zone {
@@ -193,6 +225,7 @@ export interface Transfer {
 
 export interface AssessmentFilter {
   category: AssetCategory | 'All';
+  subType?: string;
   startDate: string;
   endDate: string;
   minYear: number;
@@ -205,7 +238,7 @@ export interface AssessmentDoc {
   createdBy: string;
   createdAt: string;
   title: string;
-  status: 'DRAFT' | 'SAVED';
+  status: 'Konsep' | 'Tersimpan';
   filters: AssessmentFilter;
   candidates: Asset[];
 }

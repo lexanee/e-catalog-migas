@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Database, Settings, LogOut, FileSpreadsheet, ShieldCheck, Warehouse, Briefcase, ChevronDown, Activity, Hexagon, Search, Map, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Database, Settings, LogOut, FileSpreadsheet, ShieldCheck, Warehouse, Briefcase, ChevronDown, Activity, Hexagon, Search, Map, ClipboardList, BookOpen, Wrench, Calculator, FileText, SlidersHorizontal } from 'lucide-react';
 
 const Sidebar: React.FC<{ isOpen: boolean, setIsOpen: (val: boolean) => void }> = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useAuth();
@@ -104,6 +104,9 @@ const Sidebar: React.FC<{ isOpen: boolean, setIsOpen: (val: boolean) => void }> 
                            </div>
                         </div>
                      </div>
+                     {role === 'technical' && (
+                        <NavItem to="/master-data/parameters" icon={SlidersHorizontal} label="Parameter Teknis Produk" />
+                     )}
                   </div>
                </>
             )}
@@ -117,6 +120,7 @@ const Sidebar: React.FC<{ isOpen: boolean, setIsOpen: (val: boolean) => void }> 
                   <NavItem to="/tenders" icon={FileSpreadsheet} label="Manajemen Tender" />
                   <NavItem to="/contracts" icon={ShieldCheck} label="Monitoring Kontrak" />
                   <NavItem to="/vendors" icon={Briefcase} label="Database Penyedia" />
+                  <NavItem to="/reports" icon={FileText} label="Pusat Laporan" />
                </div>
             )}
 
@@ -124,8 +128,10 @@ const Sidebar: React.FC<{ isOpen: boolean, setIsOpen: (val: boolean) => void }> 
             {role === 'technical' && (
                <div className="space-y-1">
                   <p className="px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Operasional Teknis</p>
-                  <NavItem to="/request-list" icon={ClipboardList} label="Verifikasi Teknis" />
-                  <NavItem to="/logistics" icon={Warehouse} label="Pangkalan Logistik" />
+                  <NavItem to="/governance" icon={ShieldCheck} label="Verifikasi Aset" />
+                  <NavItem to="/maintenance" icon={Wrench} label="Pemeliharaan (WO)" />
+                  <NavItem to="/request-list" icon={ClipboardList} label="Validasi Teknis" />
+                  <NavItem to="/reports" icon={FileText} label="Pusat Laporan" />
                </div>
             )}
 
@@ -143,6 +149,7 @@ const Sidebar: React.FC<{ isOpen: boolean, setIsOpen: (val: boolean) => void }> 
                   <p className="px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Portal Mitra</p>
                   <NavItem to="/vendor" icon={LayoutDashboard} label="Dashboard Mitra" />
                   <NavItem to="/asset-catalog" icon={Database} label="Aset Terdaftar" />
+                  <NavItem to="/tkdn-calc" icon={Calculator} label="Kalkulator TKDN" />
                   <NavItem to="/settings" icon={Settings} label="Profil Perusahaan" />
                </div>
             )}

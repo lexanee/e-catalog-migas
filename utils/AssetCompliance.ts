@@ -44,13 +44,13 @@ export const validateAssetReadiness = (asset: Asset): void => {
     case 'Offshore Rig':
       // Example: Jackup rigs must have Variable Deck Load defined
       // We check if capacity string implies VDL or if explicitly set
-      if (!asset.capacity.includes('Depth') && !asset.variableDeckLoad) {
+      if (!asset.capacityString?.includes('Depth') && !asset.specs.variableDeckLoad) {
          // This is a soft check for now to avoid breaking UI on mock data
          console.warn(`Asset ${asset.name} missing Variable Deck Load data.`);
       }
       break;
     case 'Kapal':
-      if (!asset.capacity.includes('Bollard') && !asset.capacity.includes('DWT')) {
+      if (!asset.capacityString?.includes('Bollard') && !asset.capacityString?.includes('DWT')) {
         throw new Error("Kapal wajib memiliki data Bollard Pull atau DWT.");
       }
       break;

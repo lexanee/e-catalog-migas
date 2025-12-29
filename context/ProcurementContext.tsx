@@ -104,7 +104,7 @@ export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ childre
   const saveAssessment = (doc: AssessmentDoc, status: 'DRAFT' | 'FINAL'): AssessmentDoc => {
     // Logic: If FINAL, generate official Berita Acara ID. If Draft, keep generic or existing.
     let newId = doc.id;
-    let newStatus: 'DRAFT' | 'SAVED' = status === 'FINAL' ? 'SAVED' : 'DRAFT';
+    let newStatus: 'Konsep' | 'Tersimpan' = status === 'FINAL' ? 'Tersimpan' : 'Konsep';
 
     if (status === 'FINAL' && (doc.id === 'NEW' || doc.id.startsWith('DRAFT'))) {
        const year = new Date().getFullYear();

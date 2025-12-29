@@ -84,6 +84,28 @@
         border-color: #1e293b;
       }
       .custom-marker { background: transparent; border: none; }
+
+      /* PRINT STYLES */
+      @media print {
+        @page { size: landscape; margin: 1cm; }
+        body { background: white; color: black; }
+        nav, header, aside, .sidebar, .navbar, button, .no-print { display: none !important; }
+        .p-6 { padding: 0 !important; }
+        .bg-slate-50, .dark .bg-slate-900 { background: white !important; }
+        .text-white { color: black !important; }
+        .border { border-color: #ccc !important; }
+        .shadow-sm, .shadow-md, .shadow-lg { box-shadow: none !important; }
+        
+        /* Ensure table is visible */
+        table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        
+        /* Layout adjustments */
+        .flex { display: block !important; }
+        .grid { display: block !important; }
+        .overflow-hidden { overflow: visible !important; }
+        .h-screen { height: auto !important; }
+      }
     </style>
   <script type="importmap">
 {

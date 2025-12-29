@@ -2,11 +2,11 @@
 import { useState, useCallback } from 'react';
 import { useAssets } from '../context/AssetContext';
 import { useLogistics } from '../context/LogisticsContext';
-import { Shorebase, Asset, Transfer } from '../types';
+import { Shorebase, Asset, Transfer, SparePart } from '../types';
 
 export const useMaterialTransfer = () => {
-  const { assets } = useAssets();
-  const { shorebases, createTransfer, updateTransferStatus } = useLogistics();
+  const { assets, updateAsset } = useAssets();
+  const { shorebases, createTransfer, updateTransferStatus, transfers } = useLogistics();
   
   // Constants
   const VESSEL_SPEED_KNOTS = 10; 
@@ -66,8 +66,47 @@ export const useMaterialTransfer = () => {
   };
 
   const receiveTransfer = useCallback((id: string) => {
+      // 1. Update Logistics Status
       updateTransferStatus(id, 'RECEIVED');
-  }, [updateTransferStatus]);
+
+      // 2. Update Asset Inventory
+      const transfer = transfers.find(t => t.id === id);
+      if (!transfer) return;
+
+      const asset = assets.find(a => a.id === transfer.targetId);
+      if (!asset) return;
+
+      const currentInventory = asset.inventory || [];
+      const existingItemIndex = currentInventory.findIndex(i => i.name === transfer.item);
+
+      let newInventory = [...currentInventory];
+
+      if (existingItemIndex >= 0) {
+         // Update existing
+         newInventory[existingItemIndex] = {
+            ...newInventory[existingItemIndex],
+            quantity: newInventory[existingItemIndex].quantity + transfer.quantity,
+            lastUpdated: new Date().toISOString()
+         };
+      } else {
+         // Add new
+         const newItem: SparePart = {
+            id: `SP-${Date.now()}`,
+            name: transfer.item,
+            quantity: transfer.quantity,
+            unit: transfer.unit,
+            category: 'Logistics',
+            sku: `IMP-${Math.floor(Math.random()*1000)}`,
+            minLevel: 5,
+            location: 'Receiving Area',
+            lastUpdated: new Date().toISOString()
+         };
+         newInventory.push(newItem);
+      }
+
+      updateAsset(asset.id, { inventory: newInventory });
+
+  }, [updateTransferStatus, transfers, assets, updateAsset]);
 
   return {
      calculateETA,

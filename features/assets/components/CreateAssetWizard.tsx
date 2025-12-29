@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Asset, AssetCategory, AssetStatus } from '../../../types';
 import { useAssets } from '../../../context/AssetContext';
+import { useAuth } from '../../../context/AuthContext';
 import { validateAssetReadiness } from '../../../utils/AssetCompliance';
 import { Check, ChevronRight, ChevronLeft, Upload, MapPin, Anchor, Truck, Ship, AlertCircle, Info, Save } from 'lucide-react';
 
@@ -27,6 +28,7 @@ const InputField = ({ label, field, type = 'text', placeholder, required = true,
 
 const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   const { addAsset } = useAssets();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -48,7 +50,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
   }>({
     name: '',
     category: 'Onshore Rig',
-    owner: '',
+    owner: user?.company || '', // Auto-fill company if vendor
     image: '',
     manufacturer: '',
     yearBuilt: new Date().getFullYear(),
@@ -58,7 +60,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
     bollardPull: '',
     lat: '-6.2000',
     lng: '106.8166',
-    status: 'Active',
+    status: 'Registered', // Default for new creations
     locationName: ''
   });
 
@@ -116,23 +118,27 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
         capacityString = `${formData.bollardPull} Ton BP / ${formData.dwt || 'N/A'} DWT`;
     }
 
+    // Force 'Registered' status for everyone initially to ensure governance flow
+    const initialStatus: AssetStatus = 'Registered';
+
     const newAsset: Asset = {
       id: Date.now().toString(),
       number: `${new Date().getFullYear()}/${formData.category === 'Kapal' ? 'VS' : 'RG'}/${Math.floor(Math.random() * 10000)}`,
       name: formData.name,
       category: formData.category,
-      status: formData.status,
+      status: initialStatus,
       location: formData.locationName,
       coordinates: { lat: parseFloat(formData.lat), lng: parseFloat(formData.lng) },
       history: [],
       dailyRate: 0, 
       health: 100,
-      csmsScore: 100, // REFACTORED
+      csmsScore: 100, 
       incidentCount: 0,
       daysSinceIncident: 0,
       yearBuilt: formData.yearBuilt,
       manufacturer: formData.manufacturer,
-      capacity: capacityString,
+      capacityString: capacityString,
+      specs: {},
       certification: 'BKI Class (Pending)', 
       co2Emissions: 0,
       totalEmissions: 0,
@@ -140,7 +146,9 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
       maintenanceLog: [],
       inventory: [],
       nextMaintenanceDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      mtbf: 5000 
+      mtbf: 5000,
+      ownerType: user?.role === 'vendor' ? 'Foreign' : 'National', // Default logic, can be refined
+      ownerVendorId: user?.id
     };
 
     try {
@@ -237,12 +245,13 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
                 <InputField label="Latitude" field="lat" value={formData.lat} onChange={handleChange} error={errors.lat} placeholder="-6.2000" />
                 <InputField label="Longitude" field="lng" value={formData.lng} onChange={handleChange} error={errors.lng} placeholder="106.8166" />
              </div>
-             <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Status Awal</label>
-                <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value as AssetStatus})} className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-indigo-500">
-                   <option value="Active">Active (Operational)</option>
-                   <option value="Inactive">Inactive (Warm Stacked)</option>
-                </select>
+             {/* 
+                Status field removed for Governance compliance. 
+                All new assets start as 'Registered' or 'Verification' pending workflow.
+             */}
+             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg flex items-center gap-3">
+                <Info size={20} className="text-amber-600" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">Aset akan didaftarkan dengan status <strong>Registered</strong> dan memerlukan verifikasi teknis sebelum Aktif.</p>
              </div>
           </div>
         )}
@@ -255,7 +264,7 @@ const CreateAssetWizard: React.FC<CreateAssetWizardProps> = ({ onClose }) => {
          {step < 3 ? (
             <button onClick={handleNext} className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2">Lanjut <ChevronRight size={16} /></button>
          ) : (
-            <button onClick={handleSubmit} className="px-8 py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm shadow-sm hover:bg-emerald-700 transition-opacity flex items-center gap-2"><Save size={16} /> Simpan Aset</button>
+            <button onClick={handleSubmit} className="px-8 py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm shadow-sm hover:bg-emerald-700 transition-opacity flex items-center gap-2"><Save size={16} /> Submit Aset</button>
          )}
       </div>
     </div>

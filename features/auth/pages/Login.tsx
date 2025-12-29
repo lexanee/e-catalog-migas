@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth, UserRole } from '../../../context/AuthContext';
 import { Lock, Mail, ArrowRight, Briefcase, ShoppingCart, HardHat, Hexagon, Activity } from 'lucide-react';
 
@@ -101,6 +101,12 @@ const Login: React.FC = () => {
               {isLoading ? <Activity size={18} className="animate-spin" /> : <ArrowRight size={18} />}
               {isLoading ? 'Memverifikasi...' : 'Masuk'}
             </button>
+
+            {/* Registration Link per PDF */}
+            <div className="text-center pt-2">
+                <span className="text-xs text-slate-500">Belum punya akun? </span>
+                <Link to="/register" className="text-xs font-bold text-indigo-600 hover:underline">Daftar disini. Vendor atau KKKS</Link>
+            </div>
           </form>
         </div>
         

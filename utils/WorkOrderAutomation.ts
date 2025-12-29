@@ -30,7 +30,7 @@ export const checkAndGenerateWorkOrder = (
   const partIndex = inventory.findIndex(p => p.name === requiredPartName);
   
   let procurementNote = '';
-  let woPriority = 'HIGH';
+  let woPriority: 'High' | 'Critical' = 'High';
 
   if (partIndex >= 0) {
     const part = inventory[partIndex];
@@ -44,7 +44,7 @@ export const checkAndGenerateWorkOrder = (
       addNotification(asset.id, 'Inventory Reserved', `${part.name} automatically allocated.`, 'info');
     } else {
       procurementNote = `STOCKOUT: ${part.name}. Procurement Request Triggered.`;
-      woPriority = 'CRITICAL';
+      woPriority = 'Critical';
       addNotification(asset.id, 'Low Stock Alert', `Critical part ${part.name} unavailable.`, 'critical');
     }
   }
@@ -55,7 +55,9 @@ export const checkAndGenerateWorkOrder = (
     title: `AUTO-WO: Health Critical (${asset.health}%)`,
     date: new Date().toISOString().split('T')[0],
     type: 'Repair',
-    description: `System Auto-Generation. Priority: ${woPriority}. ${procurementNote}`
+    description: `System Auto-Generation. Priority: ${woPriority}. ${procurementNote}`,
+    status: 'Open',
+    priority: woPriority
   };
 
   const newLog = [newTicket, ...(asset.maintenanceLog || [])];

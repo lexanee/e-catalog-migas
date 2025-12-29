@@ -3,13 +3,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAssets } from '../../../context/AssetContext';
 import { useAuth } from '../../../context/AuthContext';
 import { AssetCategory, AssetStatus } from '../../../types';
-import { Search, LayoutGrid, Plus, MapPin, List as ListIcon, Ship, Anchor, Truck, ChevronDown, ChevronUp, SlidersHorizontal, Battery, Shield, MoreHorizontal, FileText, CheckSquare, Square } from 'lucide-react';
+import { Search, LayoutGrid, Plus, MapPin, List as ListIcon, Ship, Anchor, Truck, ChevronDown, ChevronUp, SlidersHorizontal, Battery, Shield, MoreHorizontal, FileText, CheckSquare, Square, Archive, RefreshCw } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Modal from '../../../components/common/Modal';
 import CreateAssetWizard from '../components/CreateAssetWizard';
+import VendorProductSubmission from '../components/VendorProductSubmission';
 
 const AssetRegistry: React.FC = () => {
-  const { assets } = useAssets();
+  const { assets, updateAsset } = useAssets();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = (searchParams.get('category') as AssetCategory) || 'Kapal';
@@ -46,6 +47,12 @@ const AssetRegistry: React.FC = () => {
        if (prev.length >= 3) { alert("Max 3 assets."); return prev; }
        return [...prev, id];
     });
+  };
+
+  const handleArchive = (id: string, currentStatus: AssetStatus) => {
+     // Logic for Vendor to Archive/Restore asset (Manual Page 28, 30)
+     const newStatus: AssetStatus = currentStatus === 'Inactive' ? 'Active' : 'Inactive';
+     updateAsset(id, { status: newStatus });
   };
 
   const filteredAssets = useMemo(() => {
@@ -162,12 +169,25 @@ const AssetRegistry: React.FC = () => {
                                   <div className="text-xs text-slate-500 font-mono">{asset.number}</div>
                                </td>
                                <td className="px-6 py-3">
-                                  <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2"><Battery size={12} /> {asset.capacity}</div>
+                                  <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2"><Battery size={12} /> {asset.capacityString}</div>
                                   <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5"><Shield size={12} /> {asset.certification}</div>
                                </td>
                                <td className="px-6 py-3 text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" /> {asset.location}</td>
-                               <td className="px-6 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>{asset.status}</span></td>
-                               <td className="px-6 py-3 text-right">
+                               <td className="px-6 py-3">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : asset.status === 'Inactive' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                     {asset.status}
+                                  </span>
+                               </td>
+                               <td className="px-6 py-3 text-right flex justify-end gap-2">
+                                  {user?.role === 'vendor' && (
+                                     <button 
+                                       onClick={() => handleArchive(asset.id, asset.status)} 
+                                       className="p-1 text-slate-400 hover:text-indigo-600"
+                                       title={asset.status === 'Inactive' ? 'Aktifkan Kembali' : 'Non-Aktifkan (Arsipkan)'}
+                                     >
+                                        {asset.status === 'Inactive' ? <RefreshCw size={16} /> : <Archive size={16} />}
+                                     </button>
+                                  )}
                                   <button onClick={() => navigate(`/product/${asset.id}`)} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><MoreHorizontal size={16} /></button>
                                </td>
                             </tr>
@@ -187,7 +207,7 @@ const AssetRegistry: React.FC = () => {
                          <h3 className="font-bold text-slate-900 dark:text-white truncate pr-6">{asset.name}</h3>
                          <p className="text-xs text-slate-500 mb-4">{asset.location}</p>
                          <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex justify-between items-center">
-                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{asset.capacity}</span>
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{asset.capacityString}</span>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${asset.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{asset.status}</span>
                          </div>
                       </div>
@@ -207,9 +227,13 @@ const AssetRegistry: React.FC = () => {
          </div>
       )}
 
-      {/* Enhanced Asset Registration Wizard */}
+      {/* Asset Registration Wizard - Logic to choose between Vendor vs Generic */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Registrasi Aset Baru">
-         <CreateAssetWizard onClose={() => setIsModalOpen(false)} />
+         {user?.role === 'vendor' ? (
+            <VendorProductSubmission onClose={() => setIsModalOpen(false)} />
+         ) : (
+            <CreateAssetWizard onClose={() => setIsModalOpen(false)} />
+         )}
       </Modal>
     </div>
   );

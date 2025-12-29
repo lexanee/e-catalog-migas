@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useAssets } from '../context/AssetContext';
 import { useProcurement } from '../context/ProcurementContext';
@@ -14,7 +15,7 @@ export const useMarketAssessment = () => {
     createdBy: user?.name || 'Unknown User',
     createdAt: new Date().toISOString(),
     title: `Market Assessment - ${new Date().toLocaleDateString()}`,
-    status: 'DRAFT',
+    status: 'Konsep',
     filters: {
       category: 'Onshore Rig',
       startDate: new Date().toISOString().split('T')[0],
@@ -43,7 +44,7 @@ export const useMarketAssessment = () => {
   };
 
   const updateFilters = (newFilters: Partial<AssessmentFilter>) => {
-    if (assessment.status === 'SAVED') return; // Immutable check
+    if (assessment.status === 'Tersimpan') return; // Immutable check
     setAssessment(prev => ({
       ...prev,
       filters: { ...prev.filters, ...newFilters }
@@ -52,7 +53,7 @@ export const useMarketAssessment = () => {
   };
 
   const updateTitle = (title: string) => {
-    if (assessment.status === 'SAVED') return;
+    if (assessment.status === 'Tersimpan') return;
     setAssessment(prev => ({ ...prev, title }));
   };
 
@@ -69,7 +70,7 @@ export const useMarketAssessment = () => {
       // 3. Technical Parameters
       if (minYear && asset.yearBuilt < minYear) return false;
       
-      const assetCapVal = extractCapacityValue(asset.capacity);
+      const assetCapVal = extractCapacityValue(asset.capacityString || '');
       if (minCapacity && assetCapVal < minCapacity) return false;
 
       if (region && !asset.location.toLowerCase().includes(region.toLowerCase())) return false;
@@ -125,7 +126,7 @@ export const useMarketAssessment = () => {
       createdBy: user?.name || 'Unknown User',
       createdAt: new Date().toISOString(),
       title: `Market Assessment - ${new Date().toLocaleDateString()}`,
-      status: 'DRAFT',
+      status: 'Konsep',
       filters: {
         category: 'Onshore Rig',
         startDate: new Date().toISOString().split('T')[0],
