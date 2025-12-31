@@ -13,7 +13,7 @@ jobs:
 
       - name: Setup .env
         run: |
-          echo "VPS_HOST=${{ secrets.ENV }}" >> .env
+          echo "${{ secrets.ENV }}" >> .env
 
       - name: Copy files to Server
         uses: appleboy/scp-action@v0.1.4
