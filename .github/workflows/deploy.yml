@@ -20,6 +20,9 @@ jobs:
           source: "."
           target: "~/app/e-catalog-migas"
           rm: true # Clean target directory before copy
+          debug: true
+          # experimental: skip host key check if that is the blocker
+          # insecure: true
 
       - name: Build and Deploy on VPS
         uses: appleboy/ssh-action@v0.1.10
@@ -27,6 +30,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
+          debug: true
           script: |
             cd ~/app/e-catalog-migas
             # Build and Run with Docker Compose
