@@ -11,6 +11,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup .env
+        run: |
+          echo "VPS_HOST=${{ secrets.ENV }}" >> .env
+
       - name: Copy files to Server
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -19,10 +23,7 @@ jobs:
           key: ${{ secrets.VPS_KEY }}
           source: "."
           target: "~/app/e-catalog-migas"
-          rm: true # Clean target directory before copy
-          debug: true
-          # experimental: skip host key check if that is the blocker
-          # insecure: true
+          rm: true
 
       - name: Build and Deploy on Server
         uses: appleboy/ssh-action@v0.1.10
@@ -30,11 +31,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
-          debug: true
           script: |
             cd ~/app/e-catalog-migas
-            # Build and Run with Docker Compose
-            docker-compose up -d --build
-
-            # Cleanup (Optional: prune unused images)
+            docker compose up -d --build
             docker image prune -f
