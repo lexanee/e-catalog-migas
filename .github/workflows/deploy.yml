@@ -11,7 +11,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Copy files to VPS
+      - name: Copy files to Server
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -24,7 +24,7 @@ jobs:
           # experimental: skip host key check if that is the blocker
           # insecure: true
 
-      - name: Build and Deploy on VPS
+      - name: Build and Deploy on Server
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.VPS_HOST }}
