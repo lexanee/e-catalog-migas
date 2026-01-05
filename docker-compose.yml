@@ -1,15 +1,7 @@
-version: "3.9"
-
 services:
-  app:
+  e-catalog-migas:
     container_name: e-catalog-migas
-    build: .
+    image: e-catalog-migas:latest
     ports:
       - "3310:80"
     restart: unless-stopped
-    networks:
-      - public_net
-
-networks:
-  public_net:
-    external: true

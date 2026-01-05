@@ -9,29 +9,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup .env
-        run: |
-          echo "${{ secrets.ENV }}" >> .env
+      - name: Setup .env for build
+        run: echo "${{ secrets.ENV }}" > .env
 
-      - name: Copy files to Server
-        uses: appleboy/scp-action@v0.1.4
+      - name: Build Docker image
+        run: docker build -t e-catalog-migas:latest .
+
+      - name: Save Docker image to tarball
+        run: docker save e-catalog-migas:latest | gzip > app-image.tar.gz
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
-          source: "."
+          source: "app-image.tar.gz,docker-compose.yml"
           target: "~/app/e-catalog-migas"
-          rm: true
 
-      - name: Build and Deploy on Server
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
           script: |
             cd ~/app/e-catalog-migas
-            docker compose up -d --build
+
+            echo "Loading docker image..."
+            gunzip -c app-image.tar.gz | docker load
+
+            echo "Restarting services..."
+            docker compose -f docker-compose.yml up -d --force-recreate
+
+            echo "Cleaning up..."
+            rm app-image.tar.gz
             docker image prune -f
