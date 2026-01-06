@@ -1,7 +1,7 @@
 services:
   e-catalog-migas:
     container_name: e-catalog-migas
-    image: e-catalog-migas:1.0
+    image: e-catalog-migas:1.0.0
     # ports:
     # - "3300:3300"
     restart: unless-stopped
